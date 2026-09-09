@@ -1,14 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-
 <title>Nova AI</title>
 
 <style>
-
 body{
     margin:0;
     height:100vh;
@@ -63,8 +60,7 @@ body{
     font-size:13px;
 }
 
-input,
-textarea{
+input,textarea{
     width:100%;
     margin:6px 0;
     padding:10px;
@@ -92,10 +88,8 @@ button.action{
     background:#666;
     color:white;
 }
-
 </style>
 </head>
-
 
 <body>
 
@@ -105,12 +99,10 @@ button.action{
 
 <p>Say a song name or create an email</p>
 
-<button id="mic" class="mic">
-🎙️
-</button>
+<button id="mic" class="mic">🎙️</button>
 
 <div id="status" class="status">
-Tap microphone
+    Tap microphone
 </div>
 
 <div id="command" class="command"></div>
@@ -120,28 +112,21 @@ Tap microphone
 
 <div id="editor" class="editor">
 
-    <div id="recipient"
-         class="recipient">
-    </div>
+    <div id="recipient" class="recipient"></div>
 
-    <input
-        id="subject"
-        placeholder="Email subject">
+    <input id="subject"
+           placeholder="Email subject">
 
-    <textarea
-        id="body"
-        placeholder="Email body">
-    </textarea>
+    <textarea id="body"
+              placeholder="Email body"></textarea>
 
-    <button
-        id="open"
-        class="action primary">
+    <button id="open"
+            class="action primary">
         Open in Gmail
     </button>
 
-    <button
-        id="regen"
-        class="action">
+    <button id="regen"
+            class="action">
         Regenerate
     </button>
 
@@ -152,148 +137,106 @@ Tap microphone
 
 <script>
 
-const $ = id =>
-    document.getElementById(id);
+const $=id=>document.getElementById(id);
 
+const mic=$("mic");
+const status=$("status");
+const commandBox=$("command");
 
-const mic =
-    $("mic");
+const editor=$("editor");
+const recipient=$("recipient");
+const subject=$("subject");
+const body=$("body");
 
-const status =
-    $("status");
-
-const commandBox =
-    $("command");
-
-const editor =
-    $("editor");
-
-const recipient =
-    $("recipient");
-
-const subject =
-    $("subject");
-
-const body =
-    $("body");
-
-
-const SR =
-    window.SpeechRecognition ||
+const SR=
+    window.SpeechRecognition||
     window.webkitSpeechRecognition;
 
-
 let recognition;
-
-let listening = false;
-
-let lastCommand = "";
-
-let youtubeTab = null;
+let listening=false;
+let lastCommand="";
+let youtubeTab=null;
 
 
-// ----------------------------------
 // Speech Recognition
-// ----------------------------------
 
 if(!SR){
 
-    status.textContent =
+    status.textContent=
         "Speech recognition unavailable";
 
-    mic.disabled = true;
+    mic.disabled=true;
 
 }else{
 
-    recognition = new SR();
+    recognition=new SR();
 
-    recognition.lang = "en-US";
-
-    recognition.continuous = false;
-
-    recognition.interimResults = false;
+    recognition.lang="en-US";
+    recognition.continuous=false;
+    recognition.interimResults=false;
 
 
-    recognition.onstart = () => {
+    recognition.onstart=()=>{
 
-        listening = true;
+        listening=true;
 
-        mic.classList.add(
-            "listening"
-        );
+        mic.classList.add("listening");
 
-        status.textContent =
+        status.textContent=
             "Listening...";
-
     };
 
 
-    recognition.onend = () => {
+    recognition.onend=()=>{
 
-        listening = false;
+        listening=false;
 
-        mic.classList.remove(
-            "listening"
-        );
-
+        mic.classList.remove("listening");
     };
 
 
-    recognition.onerror = e => {
+    recognition.onerror=e=>{
 
-        listening = false;
+        listening=false;
 
-        mic.classList.remove(
-            "listening"
-        );
+        mic.classList.remove("listening");
 
-        status.textContent =
-            "Voice error: " + e.error;
-
+        status.textContent=
+            "Voice error: "+e.error;
     };
 
 
-    recognition.onresult = e => {
+    recognition.onresult=e=>{
 
-        const text =
+        const text=
             e.results[0][0]
             .transcript
             .trim();
 
-
         if(!text){
 
-            status.textContent =
+            status.textContent=
                 "No command detected";
 
             return;
         }
 
+        lastCommand=text;
 
-        lastCommand = text;
-
-        commandBox.textContent =
-            text;
-
+        commandBox.textContent=text;
 
         processCommand(text);
-
     };
 
 
-    mic.onclick = () => {
+    mic.onclick=()=>{
 
-        if(listening)
-            return;
+        if(listening)return;
 
         try{
-
             recognition.start();
-
         }catch(e){
-
             console.log(e);
-
         }
 
     };
@@ -301,301 +244,156 @@ if(!SR){
 }
 
 
-// ----------------------------------
-// Detect email-writing commands
-// ----------------------------------
+// Gmail command detection
 
-function isEmailCommand(command){
+function isGmail(command){
 
-    return (
-        /\b(send|write|compose|draft|create)\b.*\b(email|mail)\b/i
-        .test(command)
-        ||
-        /\b(email|mail)\b.*\b(send|write|compose|draft|create)\b/i
-        .test(command)
-    );
-
-}
-
-
-// ----------------------------------
-// Detect explicit Gmail opening
-// ----------------------------------
-
-function isOpenGmailCommand(command){
-
-    return /\b(open|launch)\b.*\bgmail\b/i
+    return /email|mail|gmail|send|compose|write.*email/i
         .test(command);
-
 }
 
 
-// ----------------------------------
 // Main command processor
-// ----------------------------------
 
 async function processCommand(command){
 
-    // Explicit "open Gmail"
-    // does NOT automatically open it.
-    // We only inform the user.
+    const gmail=isGmail(command);
 
-    if(isOpenGmailCommand(command)){
-
-        status.textContent =
-            "Use the Open in Gmail button.";
-
-        return;
-    }
-
-
-    // Email creation
-    if(isEmailCommand(command)){
-
-        await generateEmail(command);
-
-        return;
-    }
-
-
-    // Everything else = YouTube
-    await playSong(command);
-
-}
-
-
-// ----------------------------------
-// Generate ONE email
-// ----------------------------------
-
-async function generateEmail(command){
-
-    status.textContent =
-        "Generating email...";
-
+    status.textContent=
+        gmail
+        ?"Generating email..."
+        :"Finding song...";
 
     try{
 
-        const response =
-            await fetch(
-                "/agent",
-                {
-                    method:"POST",
+        const response=await fetch(
+            gmail
+            ?"/agent"
+            :"/youtube/play",
+            {
+                method:"POST",
 
-                    headers:{
-                        "Content-Type":
-                            "application/json"
-                    },
+                headers:{
+                    "Content-Type":
+                        "application/json"
+                },
 
-                    body:JSON.stringify({
-                        command:command
-                    })
-                }
-            );
+                body:JSON.stringify({
+                    command:command
+                })
+            }
+        );
 
-
-        const data =
+        const data=
             await response.json();
 
+        if(!response.ok||!data.success){
 
-        if(
-            !response.ok ||
-            !data.success
-        ){
-
-            throw new Error(
-                data.message ||
-                "Email generation failed"
+            throw Error(
+                data.message||
+                "Request failed"
             );
-
         }
 
 
-        showEmail(data);
+        if(gmail){
 
+            showEmail(data);
+
+        }else{
+
+            playYouTube(data);
+
+        }
 
     }catch(error){
 
         console.error(error);
 
-        status.textContent =
-            error.message ||
+        status.textContent=
+            error.message||
             "Server connection failed";
-
     }
-
 }
 
 
-// ----------------------------------
-// Show ONE generated email
-// ----------------------------------
+// Show generated email
 
 function showEmail(data){
 
-    recipient.dataset.email =
-        data.recipient || "";
+    recipient.dataset.email=
+        data.recipient||"";
 
-
-    recipient.textContent =
+    recipient.textContent=
         data.recipient
-        ? "To: " + data.recipient
-        : "Recipient not specified";
+        ?"To: "+data.recipient
+        :"Recipient not specified";
 
+    subject.value=
+        data.subject||"";
 
-    subject.value =
-        data.subject || "";
+    body.value=
+        data.body||"";
 
+    editor.style.display="block";
 
-    body.value =
-        data.body || "";
-
-
-    editor.style.display =
-        "block";
-
-
-    status.textContent =
+    status.textContent=
         "Email ready. Review or edit it.";
-
 }
 
 
-// ----------------------------------
-// Manually open Gmail
-// ----------------------------------
+// Open Gmail
 
-$("open").onclick = () => {
+$("open").onclick=()=>{
 
-    const url =
-        "https://mail.google.com/mail/u/0/?" +
+    const url=
+        "https://mail.google.com/mail/u/0/?"+
         new URLSearchParams({
 
             view:"cm",
-
             fs:"1",
 
             to:
-                recipient.dataset.email || "",
+                recipient.dataset.email||"",
 
             su:
                 subject.value,
 
             body:
                 body.value
-
         });
 
-
-    const win =
+    const win=
         window.open(
             url,
             "NovaGmail"
         );
 
-
     if(!win){
 
-        status.textContent =
+        status.textContent=
             "Please allow popups for this site.";
-
     }
-
 };
 
 
-// ----------------------------------
-// Regenerate
-// ----------------------------------
+// Regenerate email
 
-$("regen").onclick = () => {
+$("regen").onclick=()=>{
 
-    if(lastCommand){
-
-        generateEmail(
-            lastCommand
-        );
-
-    }
-
+    if(lastCommand)
+        processCommand(lastCommand);
 };
 
 
-// ----------------------------------
-// YouTube
-// ----------------------------------
+// YouTube playback
 
-async function playSong(command){
+function playYouTube(data){
 
-    status.textContent =
-        "Finding song...";
+    if(!youtubeTab||
+       youtubeTab.closed){
 
-
-    try{
-
-        const response =
-            await fetch(
-                "/youtube/play",
-                {
-                    method:"POST",
-
-                    headers:{
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:JSON.stringify({
-                        command:command
-                    })
-                }
-            );
-
-
-        const data =
-            await response.json();
-
-
-        if(
-            !response.ok ||
-            !data.success
-        ){
-
-            throw new Error(
-                data.message ||
-                "Song not found"
-            );
-
-        }
-
-
-        openYouTube(data);
-
-
-    }catch(error){
-
-        console.error(error);
-
-        status.textContent =
-            error.message ||
-            "YouTube request failed";
-
-    }
-
-}
-
-
-// ----------------------------------
-// Open / reuse YouTube tab
-// ----------------------------------
-
-function openYouTube(data){
-
-    if(
-        !youtubeTab ||
-        youtubeTab.closed
-    ){
-
-        youtubeTab =
+        youtubeTab=
             window.open(
                 data.url,
                 "NovaYouTube"
@@ -603,17 +401,13 @@ function openYouTube(data){
 
     }else{
 
-        youtubeTab.location.href =
+        youtubeTab.location.href=
             data.url;
 
         youtubeTab.focus();
-
     }
 
-
-    status.textContent =
-        "Playing";
-
+    status.textContent="Playing";
 }
 
 </script>

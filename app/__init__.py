@@ -1,9 +1,10 @@
+
 import os
 
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 
-from gmail import (
+from app.gmail import (
     is_email_command,
     extract_email,
     create_gmail_url,
@@ -18,31 +19,23 @@ def create_app():
     app = Flask(__name__)
     CORS(app)
 
-    # -----------------------------
-    # YouTube Blueprint
-    # -----------------------------
+    # YouTube
     app.register_blueprint(
         youtube_bp,
         url_prefix="/youtube"
     )
 
-    # -----------------------------
-    # Main Nova AI Page
-    # -----------------------------
+    # Home
     @app.route("/")
     def home():
         return render_template("index.html")
 
-    # -----------------------------
-    # HTML Route
-    # -----------------------------
+    # HTML
     @app.route("/html")
     def html():
         return render_template("index.html")
 
-    # -----------------------------
-    # Health Check
-    # -----------------------------
+    # Health
     @app.route("/health")
     def health():
         return jsonify({
@@ -50,9 +43,7 @@ def create_app():
             "service": "Nova AI Agent"
         })
 
-    # -----------------------------
     # Gmail AI Agent
-    # -----------------------------
     @app.route("/agent", methods=["POST"])
     def agent():
 
@@ -99,16 +90,3 @@ def create_app():
 
     return app
 
-
-# -----------------------------
-# Direct Run
-# -----------------------------
-if __name__ == "__main__":
-
-    app = create_app()
-
-    app.run(
-        host="0.0.0.0",
-        port=int(os.getenv("PORT", 8000)),
-        debug=False
-    )

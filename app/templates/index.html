@@ -251,6 +251,10 @@ button.action{
 <script>
 
 
+// --------------------------------------------------
+// DOM REFERENCES
+// --------------------------------------------------
+
 const $ =
     id => document.getElementById(id);
 
@@ -283,6 +287,10 @@ const body =
     $("body");
 
 
+// --------------------------------------------------
+// SPEECH RECOGNITION
+// --------------------------------------------------
+
 const SR =
     window.SpeechRecognition ||
     window.webkitSpeechRecognition;
@@ -290,18 +298,32 @@ const SR =
 
 let recognition;
 
-
 let listening = false;
 
+
+// --------------------------------------------------
+// COMMAND STATE
+// --------------------------------------------------
 
 let lastCommand = "";
 
 
+// Prevent duplicate email generation
+let emailGenerated = false;
+
+
+// Prevent multiple requests at the same time
+let generatingEmail = false;
+
+
+// YouTube tab
 let youtubeTab = null;
 
 
 
-// Speech Recognition
+// --------------------------------------------------
+// SPEECH RECOGNITION SETUP
+// --------------------------------------------------
 
 if(!SR){
 
@@ -430,7 +452,9 @@ else{
 
 
 
-// Gmail command detection
+// --------------------------------------------------
+// GMAIL COMMAND DETECTION
+// --------------------------------------------------
 
 function isGmail(command){
 
@@ -441,7 +465,9 @@ function isGmail(command){
 
 
 
-// Main command processor
+// --------------------------------------------------
+// MAIN COMMAND PROCESSOR
+// --------------------------------------------------
 
 async function processCommand(command){
 
@@ -450,10 +476,55 @@ async function processCommand(command){
         isGmail(command);
 
 
-    status.textContent =
-        gmail
-        ? "Generating email..."
-        : "Finding song...";
+
+    // ----------------------------------------------
+    // EMAIL DUPLICATE PROTECTION
+    // ----------------------------------------------
+
+    if(gmail){
+
+        // If an email is already being generated,
+        // do not send another request.
+
+        if(generatingEmail){
+
+            status.textContent =
+                "Email is already being generated...";
+
+            return;
+
+        }
+
+
+        // If this command already generated an email,
+        // don't generate another one.
+
+        if(
+            emailGenerated &&
+            command === lastCommand
+        ){
+
+            status.textContent =
+                "Email already generated.";
+
+            return;
+
+        }
+
+
+        generatingEmail = true;
+
+        status.textContent =
+            "Generating email...";
+
+    }
+    else{
+
+        status.textContent =
+            "Finding song...";
+
+    }
+
 
 
     try{
@@ -505,13 +576,27 @@ async function processCommand(command){
 
 
 
+        // ------------------------------------------
+        // GMAIL RESULT
+        // ------------------------------------------
+
         if(gmail){
 
             showEmail(
                 data
             );
 
+
+            // Mark email as generated.
+            emailGenerated = true;
+
         }
+
+
+        // ------------------------------------------
+        // YOUTUBE RESULT
+        // ------------------------------------------
+
         else{
 
             playYouTube(
@@ -533,13 +618,23 @@ async function processCommand(command){
             error.message ||
             "Server connection failed";
 
+
+    }
+    finally{
+
+        // Request has finished.
+
+        generatingEmail = false;
+
     }
 
 }
 
 
 
-// Show generated email
+// --------------------------------------------------
+// SHOW GENERATED EMAIL
+// --------------------------------------------------
 
 function showEmail(data){
 
@@ -573,7 +668,9 @@ function showEmail(data){
 
 
 
-// Open Gmail
+// --------------------------------------------------
+// OPEN GMAIL
+// --------------------------------------------------
 
 $("open").onclick = () => {
 
@@ -619,23 +716,28 @@ $("open").onclick = () => {
 
 
 
-// Regenerate email
+// --------------------------------------------------
+// REGENERATE BUTTON
+// --------------------------------------------------
+//
+// Intentionally disabled for automatic regeneration.
+// The existing button remains visible, but clicking it
+// will NOT generate another email.
+//
+// --------------------------------------------------
 
 $("regen").onclick = () => {
 
-    if(lastCommand){
-
-        processCommand(
-            lastCommand
-        );
-
-    }
+    status.textContent =
+        "Email already generated. Edit the existing email.";
 
 };
 
 
 
-// YouTube playback
+// --------------------------------------------------
+// YOUTUBE PLAYBACK
+// --------------------------------------------------
 
 function playYouTube(data){
 
@@ -666,7 +768,6 @@ function playYouTube(data){
         "Playing";
 
 }
-
 
 </script>
 

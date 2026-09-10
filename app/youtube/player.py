@@ -1,4 +1,4 @@
-```python
+
 import re
 import urllib.parse
 import urllib.request
@@ -94,4 +94,3 @@ def create_youtube_url(command):
         + video_id
         + "?autoplay=1&mute=0"
     )
-```

@@ -576,18 +576,15 @@ async function processCommand(command){
 
 
 
+   
         // ------------------------------------------
         // GMAIL RESULT
         // ------------------------------------------
 
         if(gmail){
 
-            showEmail(
-                data
-            );
+            showEmail(data);
 
-
-            // Mark email as generated.
             emailGenerated = true;
 
         }
@@ -597,11 +594,9 @@ async function processCommand(command){
         // YOUTUBE RESULT
         // ------------------------------------------
 
-        else{
+        else if(!gmail){
 
-            playYouTube(
-                data
-            );
+            playYouTube(data);
 
         }
 

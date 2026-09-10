@@ -581,16 +581,7 @@ async function processCommand(command){
         // GMAIL RESULT
         // ------------------------------------------
 
-        if(!gmail){
-
-            playYouTube(data);
-
-        }
-
-        
-
-
-        elif(gmail){
+        if(gmail){
 
             showEmail(data);
 
@@ -599,6 +590,15 @@ async function processCommand(command){
         }
 
 
+        // ------------------------------------------
+        // YOUTUBE RESULT
+        // ------------------------------------------
+
+        else if(!gmail){
+
+            playYouTube(data);
+
+        }
 
 
     }

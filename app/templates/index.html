@@ -287,6 +287,7 @@ const body =
     $("body");
 
 
+
 // --------------------------------------------------
 // SPEECH RECOGNITION
 // --------------------------------------------------
@@ -301,6 +302,7 @@ let recognition;
 let listening = false;
 
 
+
 // --------------------------------------------------
 // COMMAND STATE
 // --------------------------------------------------
@@ -309,14 +311,17 @@ let lastCommand = "";
 
 
 // Prevent duplicate email generation
+
 let emailGenerated = false;
 
 
 // Prevent multiple requests at the same time
+
 let generatingEmail = false;
 
 
 // YouTube tab
+
 let youtubeTab = null;
 
 
@@ -453,13 +458,66 @@ else{
 
 
 // --------------------------------------------------
-// GMAIL COMMAND DETECTION
+// GMAIL KEYWORD DETECTION
+// --------------------------------------------------
+//
+// Gmail requires BOTH:
+//
+// create
+// email
+//
+// Examples:
+//
+// "create email for my boss"
+// "create an email for my manager"
+//
 // --------------------------------------------------
 
 function isGmail(command){
 
-    return /email|mail|gmail|send|compose|write.*email/i
-        .test(command);
+    const hasCreate =
+        /\bcreate\b/i.test(command);
+
+
+    const hasEmail =
+        /\bemail\b/i.test(command);
+
+
+    return (
+        hasCreate &&
+        hasEmail
+    );
+
+}
+
+
+
+// --------------------------------------------------
+// YOUTUBE KEYWORD DETECTION
+// --------------------------------------------------
+//
+// YouTube requires:
+//
+// play
+//
+// OR
+//
+// song
+//
+// Examples:
+//
+// "play believer"
+// "play a song"
+// "song believer"
+//
+// --------------------------------------------------
+
+function isYouTube(command){
+
+    return (
+        /\bplay\b/i.test(command) ||
+        /\bsong\b/i.test(command)
+    );
 
 }
 
@@ -472,19 +530,26 @@ function isGmail(command){
 async function processCommand(command){
 
 
+    // ----------------------------------------------
+    // CHECK COMMAND TYPE
+    // ----------------------------------------------
+
     const gmail =
         isGmail(command);
 
 
+    const youtube =
+        isYouTube(command);
+
+
 
     // ----------------------------------------------
-    // EMAIL DUPLICATE PROTECTION
+    // GMAIL COMMAND
     // ----------------------------------------------
 
     if(gmail){
 
-        // If an email is already being generated,
-        // do not send another request.
+        // Prevent duplicate generation
 
         if(generatingEmail){
 
@@ -496,8 +561,8 @@ async function processCommand(command){
         }
 
 
-        // If this command already generated an email,
-        // don't generate another one.
+        // Prevent the same command from generating
+        // another email
 
         if(
             emailGenerated &&
@@ -514,112 +579,181 @@ async function processCommand(command){
 
         generatingEmail = true;
 
+
         status.textContent =
             "Generating email...";
 
+
+        try{
+
+
+            const response =
+                await fetch(
+                    "/agent",
+                    {
+
+                        method:"POST",
+
+                        headers:{
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                        body:
+                            JSON.stringify({
+                                command:command
+                            })
+
+                    }
+                );
+
+
+
+            const data =
+                await response.json();
+
+
+
+            if(
+                !response.ok ||
+                !data.success
+            ){
+
+                throw Error(
+                    data.message ||
+                    "Email request failed"
+                );
+
+            }
+
+
+
+            // Show ONE generated email
+
+            showEmail(
+                data
+            );
+
+
+            emailGenerated = true;
+
+
+        }
+        catch(error){
+
+            console.error(
+                error
+            );
+
+
+            status.textContent =
+                error.message ||
+                "Email generation failed";
+
+        }
+        finally{
+
+            generatingEmail = false;
+
+        }
+
+
+        return;
+
     }
-    else{
+
+
+
+    // ----------------------------------------------
+    // YOUTUBE COMMAND
+    // ----------------------------------------------
+
+    else if(youtube){
 
         status.textContent =
             "Finding song...";
 
+
+        try{
+
+
+            const response =
+                await fetch(
+                    "/youtube/play",
+                    {
+
+                        method:"POST",
+
+                        headers:{
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                        body:
+                            JSON.stringify({
+                                command:command
+                            })
+
+                    }
+                );
+
+
+
+            const data =
+                await response.json();
+
+
+
+            if(
+                !response.ok ||
+                !data.success
+            ){
+
+                throw Error(
+                    data.message ||
+                    "YouTube request failed"
+                );
+
+            }
+
+
+
+            playYouTube(
+                data
+            );
+
+
+        }
+        catch(error){
+
+            console.error(
+                error
+            );
+
+
+            status.textContent =
+                error.message ||
+                "YouTube request failed";
+
+        }
+
+
+        return;
+
     }
 
 
 
-    try{
+    // ----------------------------------------------
+    // UNKNOWN COMMAND
+    // ----------------------------------------------
 
-
-        const response =
-            await fetch(
-
-                gmail
-                ? "/agent"
-                : "/youtube/play",
-
-                {
-
-                    method:"POST",
-
-                    headers:{
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-                            command:command
-                        })
-
-                }
-
-            );
-
-
-
-        const data =
-            await response.json();
-
-
-
-        if(
-            !response.ok ||
-            !data.success
-        ){
-
-            throw Error(
-                data.message ||
-                "Request failed"
-            );
-
-        }
-
-
-
-   
-        // ------------------------------------------
-        // GMAIL RESULT
-        // ------------------------------------------
-
-        if(gmail){
-
-            showEmail(data);
-
-            emailGenerated = true;
-
-        }
-
-
-        // ------------------------------------------
-        // YOUTUBE RESULT
-        // ------------------------------------------
-
-        else if(!gmail){
-
-            playYouTube(data);
-
-        }
-
-
-    }
-    catch(error){
-
-        console.error(
-            error
-        );
-
+    else{
 
         status.textContent =
-            error.message ||
-            "Server connection failed";
+            "Please say 'create email' or 'play song'.";
 
-
-    }
-    finally{
-
-        // Request has finished.
-
-        generatingEmail = false;
+        return;
 
     }
 
@@ -715,10 +849,9 @@ $("open").onclick = () => {
 // REGENERATE BUTTON
 // --------------------------------------------------
 //
-// Intentionally disabled for automatic regeneration.
-// The existing button remains visible, but clicking it
-// will NOT generate another email.
+// No automatic second generation.
 //
+// Clicking this button also does NOT call /agent.
 // --------------------------------------------------
 
 $("regen").onclick = () => {
@@ -763,6 +896,7 @@ function playYouTube(data){
         "Playing";
 
 }
+
 
 </script>
 
